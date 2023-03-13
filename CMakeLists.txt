@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(pa2 C)
+project(pa4 C)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -10,17 +10,16 @@ set_target_properties(rn PROPERTIES
 
 include_directories(.)
 
-add_executable(pa2
-        bank_robbery.c
-        banking.h
+add_executable(pa4
         common.h
         ipc.c
         ipc.h
+        lamport.h lamport.c
         main.h
         work_manager.c
         work_manager.h
         main.c
         pa2345.h
-        banking.c lamport.h lamport.cpp)
+        )
 
-target_link_libraries(pa2 rn)
+target_link_libraries(pa4 rn)

@@ -78,49 +78,14 @@ void wait_other_start(Info *info, FILE * events_file_ptr) {
     local_id id = info->s_current_id;
 
     Message msg = create_message(STARTED, 0, NULL);
-    fprintf(events_file_ptr, log_started_fmt, msg.s_header.s_local_time, id, getpid(), getppid(), info->s_balance);
+    //fprintf(events_file_ptr, log_started_fmt, msg.s_header.s_local_time, id, getpid(), getppid(), info->s_balance);
 
     if (send_multicast(info, &msg) != 0) {
         exit(1);
     }
 
     receive_multicast(info);
-    fprintf(events_file_ptr, log_received_all_started_fmt, get_physical_time(), id);
-}
-
-balance_t process_transfer(Info *info, Message *msg, BalanceHistory *history, BalanceState *state,
-                           FILE * events_file_ptr) {
-    local_id id = info->s_current_id;
-    BalanceState last_state = *state;
-
-    TransferOrder transferOrder;
-    memcpy(&transferOrder, msg->s_payload, sizeof(TransferOrder));
-
-    if (transferOrder.s_src == id) { // this process is src
-        state->s_balance -= transferOrder.s_amount;
-
-        send(info, transferOrder.s_dst, msg);
-        fprintf(events_file_ptr, log_transfer_out_fmt,
-                msg->s_header.s_local_time, id, transferOrder.s_amount, transferOrder.s_dst);
-
-    } else if (transferOrder.s_dst == id) {
-        state->s_balance += transferOrder.s_amount;
-
-        Message reply = create_message(ACK, 0, NULL);
-        send(info, PARENT_ID, &reply);
-        fprintf(events_file_ptr, log_transfer_in_fmt,
-                msg->s_header.s_local_time, id, transferOrder.s_amount, transferOrder.s_src);
-    }
-
-    state->s_time = get_physical_time();
-    history->s_history[state->s_time] = *state;
-    history->s_history_len = state->s_time + 1;
-
-    for (; last_state.s_time < state->s_time; last_state.s_time++) {
-        history->s_history[last_state.s_time] = last_state;
-    }
-
-    return state->s_balance;
+    fprintf(events_file_ptr, log_received_all_started_fmt, get_lamport_time(), id);
 }
 
 void process_stop_msg(Info *info) {
@@ -128,11 +93,11 @@ void process_stop_msg(Info *info) {
     send_multicast(info, &reply);
 }
 
-void process_done_msg(Info *info, BalanceHistory *history, FILE * events_file_ptr) {
+void process_done_msg(Info *info, FILE * events_file_ptr) {
     local_id id = info->s_current_id;
-    fprintf(events_file_ptr, log_received_all_done_fmt, history->s_history_len, id);
+    //fprintf(events_file_ptr, log_received_all_done_fmt, history->s_history_len, id);
 
-    Message msg = create_message(BALANCE_HISTORY, sizeof(BalanceHistory), history);
+    Message msg = create_message(BALANCE_HISTORY, 0, NULL);
     send(info, PARENT_ID, &msg);
 }
 
@@ -141,9 +106,9 @@ void do_payload(Info *info, FILE * events_file_ptr) {
     local_id process_count = info->s_process_count;
     timestamp_t last_time = 0;
 
-    BalanceState state = {info->s_balance, last_time, 0};
-    BalanceHistory history = {info->s_current_id, 0};
-    history.s_history[0] = state;
+    //BalanceState state = {info->s_balance, last_time, 0};
+    //BalanceHistory history = {info->s_current_id, 0};
+    //history.s_history[0] = state;
 
     int done_count = 0;
 
@@ -152,7 +117,7 @@ void do_payload(Info *info, FILE * events_file_ptr) {
         receive_any(info, &message);
         switch (message.s_header.s_type) {
             case TRANSFER: {
-                process_transfer(info, &message, &history, &state, events_file_ptr);
+                //process_transfer(info, &message, &history, &state, events_file_ptr);
                 break;
             }
             case STOP: {
@@ -163,7 +128,7 @@ void do_payload(Info *info, FILE * events_file_ptr) {
                 done_count++;
                 if (done_count == process_count - 2)
                 {
-                    process_done_msg(info, &history, events_file_ptr);
+                    process_done_msg(info, events_file_ptr);
                     return;
                 }
                 break;
@@ -175,9 +140,9 @@ void do_payload(Info *info, FILE * events_file_ptr) {
     }
 }
 
-void pipe_work(local_id id, Info *info, balance_t start_balance, FILE * events_file_ptr) {
+void pipe_work(local_id id, Info *info, FILE * events_file_ptr) {
     info->s_current_id = id;
-    info->s_balance = start_balance;
+    //info->s_balance = start_balance;
 
     close_pipes(info, false);
     wait_other_start(info, events_file_ptr);
@@ -185,46 +150,18 @@ void pipe_work(local_id id, Info *info, balance_t start_balance, FILE * events_f
     close_pipes(info, true);
 }
 
-pid_t *fork_processes(local_id process_count, Info *info, balance_t *balances, FILE * events_file_ptr) {
+pid_t *fork_processes(local_id process_count, Info *info, FILE * events_file_ptr) {
     pid_t *all_pids = malloc(sizeof(pid_t) * MAX_PROCESS_COUNT);
     all_pids[0] = getpid();
     for (local_id child_id = 1; child_id < process_count; child_id++) {
         all_pids[child_id] = fork();
         if (all_pids[child_id] == 0) {
             //continue in created child process
-            pipe_work(child_id, info, balances[child_id - 1], events_file_ptr);
+            pipe_work(child_id, info, events_file_ptr);
             exit(0);
         }
     }
     return all_pids;
-}
-
-void get_all_history_messages(AllHistory *all_history, Info *info) {
-    local_id process_count = info->s_process_count;
-
-    int max_history_len = 0;
-    Message history_msg;
-    for (local_id from = 1; from < process_count; from++) {
-        receive(info, from, &history_msg);
-        BalanceHistory *history = (BalanceHistory *) history_msg.s_payload;
-        memcpy(&all_history->s_history[from-1], history, sizeof(BalanceHistory));
-
-        if (history->s_history_len > max_history_len)
-            max_history_len = history->s_history_len;
-    }
-
-    for (local_id history_id = 0; history_id < process_count - 1; history_id++) {
-        BalanceHistory history = all_history->s_history[history_id];
-        BalanceState last_state = history.s_history[history.s_history_len - 1];
-
-        if (last_state.s_time < max_history_len) {
-            for (; last_state.s_time < max_history_len; last_state.s_time++) {
-                all_history->s_history[history_id].s_history[last_state.s_time] = last_state;
-            }
-
-            all_history->s_history[history_id].s_history_len = max_history_len;
-        }
-    }
 }
 
 void parent_work(Info *info) {
@@ -235,7 +172,7 @@ void parent_work(Info *info) {
 
     receive_multicast(info); //All STARTED
 
-    bank_robbery(info, child_count);
+    //bank_robbery(info, child_count);
 
     Message msg = create_message(STOP, 0, NULL);
     if (send_multicast(info, &msg) != 0) {
@@ -244,18 +181,14 @@ void parent_work(Info *info) {
 
     receive_multicast(info); //All DONE
 
-    AllHistory all_history = {child_count};
-    get_all_history_messages(&all_history, info);
-
     while (wait(NULL) > 0) {
     }
 
     close_pipes(info, true);
-    print_history(&all_history);
 }
 
 
-void do_work(local_id process_count, balance_t *balances) {
+void do_work(local_id process_count) {
     Info *info = malloc(sizeof(Info));
     info->s_process_count = process_count;
 
@@ -264,7 +197,7 @@ void do_work(local_id process_count, balance_t *balances) {
 
     init_topology(info);
     open_pipes(info);
-    fork_processes(process_count, info, balances, events_file_ptr);
+    fork_processes(process_count, info, events_file_ptr);
     parent_work(info);
 
     fclose(events_file_ptr);

@@ -16,16 +16,17 @@
 #include "common.h"
 #include "pa2345.h"
 #include "main.h"
+#include "lamport.h"
 
 void init_topology(Info* info);
 
 void open_pipes(Info* info);
 
-pid_t* fork_processes(local_id process_count, Info* info, balance_t *balances, FILE * events_file_ptr);
+pid_t* fork_processes(local_id process_count, Info* info, FILE * events_file_ptr);
 
 void close_pipes(Info* info, bool owned_only);
 
-void do_work(local_id process_count, balance_t * balances);
+void do_work(local_id process_count);
 
 #endif
 
