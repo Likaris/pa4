@@ -15,6 +15,9 @@ typedef struct{
 typedef struct{
 	local_id s_process_count;
 	local_id s_current_id;
+
+    timestamp_t logicTime;
+
     //balance_t s_balance;
 	Pipes *s_pipes[MAX_PROCESS_COUNT][MAX_PROCESS_COUNT];
 } Info;

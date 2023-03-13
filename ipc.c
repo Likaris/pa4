@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "main.h"
+#include "lamport.h"
 
 int send(void *self, local_id dst, const Message *msg) {
     Info *info = self;
@@ -40,6 +41,12 @@ int receive(void *self, local_id from, Message *msg) {
 
         if (bytes_read > 0) {
             bytes_read = read(read_fd, &(msg->s_payload), msg->s_header.s_payload_len);
+
+            if (info->logicTime < msg->s_header.s_local_time) {
+                setLamportTime(msg->s_header.s_local_time);
+            }
+            incrementLamportTime();
+
             return bytes_read >= 0 ? 0 : -1;
         }
     }
@@ -63,6 +70,12 @@ int receive_any(void *self, Message *msg) {
 
                 if (bytes_read > 0) {
                     bytes_read = read(read_fd, &(msg->s_payload), msg->s_header.s_payload_len);
+
+                    if (info->logicTime < msg->s_header.s_local_time) {
+                        setLamportTime(msg->s_header.s_local_time);
+                    }
+                    incrementLamportTime();
+
                     return bytes_read >= 0 ? 0 : -1;
                 }
             }
@@ -76,13 +89,16 @@ int receive_multicast(void *self) {
 
     local_id process_count = info->s_process_count;
     for (local_id from = 1; from < process_count; from++) {
-        if (from == id){
+        if (from == id) {
             continue;
         }
 
         Message message;
-        if (receive(info, from, &message) != 0)
+        if (receive(info, from, &message) != 0) {
             return -1;
+        } else {
+            printf("%1d recieved msg from %1d\n", id, from);
+        }
     }
 
     return 0;
@@ -93,7 +109,7 @@ Message create_message(int16_t type, uint16_t payload_len, void* payload) {
             MESSAGE_MAGIC,
             payload_len,
             type,
-            get_physical_time()
+            get_lamport_time()
     };
 
     Message msg = {header};

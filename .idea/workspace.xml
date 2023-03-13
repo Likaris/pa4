@@ -54,7 +54,7 @@
     "WebServerToolWindowFactoryState": "false",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "last_opened_file_path": "/home/alika/Рабочий стол/Yaroslav/pa4",
+    "last_opened_file_path": "/home/alika/Рабочий стол/Yaroslav/SmbReworked/pa4",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -83,7 +83,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="pa4" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="-p 4 10 20 30 10" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pa4" TARGET_NAME="pa4" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="pa4" RUN_TARGET_NAME="pa4">
+    <configuration name="pa4" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="-p 2 10 20 30 10" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pa4" TARGET_NAME="pa4" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="pa4" RUN_TARGET_NAME="pa4">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
@@ -113,7 +113,7 @@
       <workItem from="1678262689769" duration="491000" />
       <workItem from="1678265472903" duration="731000" />
       <workItem from="1678714762242" duration="150000" />
-      <workItem from="1678726212027" duration="1631000" />
+      <workItem from="1678726212027" duration="6788000" />
     </task>
     <servers />
   </component>

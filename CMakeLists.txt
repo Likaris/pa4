@@ -23,3 +23,5 @@ add_executable(pa4
         )
 
 target_link_libraries(pa4 rn)
+
+#-p --mutexl 2

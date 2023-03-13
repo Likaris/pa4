@@ -77,19 +77,27 @@ void close_pipes(Info *info, bool owned_only) {
 void wait_other_start(Info *info, FILE * events_file_ptr) {
     local_id id = info->s_current_id;
 
+    incrementLamportTime();
     Message msg = create_message(STARTED, 0, NULL);
-    //fprintf(events_file_ptr, log_started_fmt, msg.s_header.s_local_time, id, getpid(), getppid(), info->s_balance);
+    fprintf(events_file_ptr, log_started_fmt, msg.s_header.s_local_time, id, getpid(), getppid(), 0);
+    fflush(events_file_ptr);
 
     if (send_multicast(info, &msg) != 0) {
         exit(1);
     }
 
     receive_multicast(info);
+
     fprintf(events_file_ptr, log_received_all_started_fmt, get_lamport_time(), id);
+    fflush(events_file_ptr);
 }
 
-void process_stop_msg(Info *info) {
+void process_stop_msg(Info *info, FILE * events_file_ptr) {
+    incrementLamportTime();
     Message reply = create_message(DONE, 0, NULL);
+    fprintf(events_file_ptr, log_done_fmt, reply.s_header.s_local_time, info->s_current_id, 0);
+    fflush(events_file_ptr);
+
     send_multicast(info, &reply);
 }
 
@@ -104,7 +112,7 @@ void process_done_msg(Info *info, FILE * events_file_ptr) {
 
 void do_payload(Info *info, FILE * events_file_ptr) {
     local_id process_count = info->s_process_count;
-    timestamp_t last_time = 0;
+    //timestamp_t last_time = 0;
 
     //BalanceState state = {info->s_balance, last_time, 0};
     //BalanceHistory history = {info->s_current_id, 0};
@@ -121,7 +129,7 @@ void do_payload(Info *info, FILE * events_file_ptr) {
                 break;
             }
             case STOP: {
-                process_stop_msg(info);
+                process_stop_msg(info, events_file_ptr);
                 break;
             }
             case DONE: {
@@ -170,6 +178,7 @@ void parent_work(Info *info) {
 
     close_pipes(info, false);
 
+    incrementLamportTime();
     receive_multicast(info); //All STARTED
 
     //bank_robbery(info, child_count);
@@ -191,6 +200,7 @@ void parent_work(Info *info) {
 void do_work(local_id process_count) {
     Info *info = malloc(sizeof(Info));
     info->s_process_count = process_count;
+    info->logicTime = get_lamport_time();
 
     FILE *events_file_ptr = fopen(events_log, "a");
     pipes_file_ptr = fopen(pipes_log, "a");
