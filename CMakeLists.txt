@@ -20,7 +20,7 @@ add_executable(pa4
         work_manager.h
         main.c
         pa2345.h
-        )
+        critical_section.h critical_section.c)
 
 target_link_libraries(pa4 rn)
 

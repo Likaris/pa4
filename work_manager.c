@@ -111,41 +111,31 @@ void process_done_msg(Info *info, FILE * events_file_ptr) {
 
 
 void do_payload(Info *info, FILE * events_file_ptr) {
-    local_id process_count = info->s_process_count;
-    //timestamp_t last_time = 0;
+    initWorkers(info->s_process_count);
 
-    //BalanceState state = {info->s_balance, last_time, 0};
-    //BalanceHistory history = {info->s_current_id, 0};
-    //history.s_history[0] = state;
+    local_id id = info->s_current_id;
+    int loopCount = id * 5;
 
-    int done_count = 0;
-
-    Message message;
-    while (1) {
-        receive_any(info, &message);
-        switch (message.s_header.s_type) {
-            case TRANSFER: {
-                //process_transfer(info, &message, &history, &state, events_file_ptr);
-                break;
-            }
-            case STOP: {
-                process_stop_msg(info, events_file_ptr);
-                break;
-            }
-            case DONE: {
-                done_count++;
-                if (done_count == process_count - 2)
-                {
-                    process_done_msg(info, events_file_ptr);
-                    return;
-                }
-                break;
-            }
-            default:
-                printf("%s\n", "default");
-                break;
+    if (info->mutex) {
+        for (int i = 1; i <= loopCount; ++i) {
+            char message[256];
+            sprintf(message, log_loop_operation_fmt, info->s_current_id, i, loopCount);
+            request_cs(info);
+            print(message); //TODO: teacher print
+            //printf(message); //TODO: hide
+            release_cs(info);
+        }
+    } else {
+        for (int i = 1; i <= loopCount; ++i) {
+            char message[256];
+            sprintf(message, log_loop_operation_fmt, info->s_current_id, i, loopCount);
+            print(message); //TODO: teacher print
         }
     }
+
+    process_stop_msg(info, events_file_ptr);
+    receive_multicast(info); //All DONE
+
 }
 
 void pipe_work(local_id id, Info *info, FILE * events_file_ptr) {
@@ -183,10 +173,10 @@ void parent_work(Info *info) {
 
     //bank_robbery(info, child_count);
 
-    Message msg = create_message(STOP, 0, NULL);
-    if (send_multicast(info, &msg) != 0) {
-        exit(1);
-    }
+//    Message msg = create_message(STOP, 0, NULL);
+//    if (send_multicast(info, &msg) != 0) {
+//        exit(1);
+//    }
 
     receive_multicast(info); //All DONE
 
@@ -197,10 +187,11 @@ void parent_work(Info *info) {
 }
 
 
-void do_work(local_id process_count) {
+void do_work(local_id process_count, bool mutex) {
     Info *info = malloc(sizeof(Info));
     info->s_process_count = process_count;
     info->logicTime = get_lamport_time();
+    info->mutex = mutex; //TODO: input
 
     FILE *events_file_ptr = fopen(events_log, "a");
     pipes_file_ptr = fopen(pipes_log, "a");

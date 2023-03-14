@@ -17,6 +17,7 @@
 #include "pa2345.h"
 #include "main.h"
 #include "lamport.h"
+#include "critical_section.h"
 
 void init_topology(Info* info);
 
@@ -26,7 +27,7 @@ pid_t* fork_processes(local_id process_count, Info* info, FILE * events_file_ptr
 
 void close_pipes(Info* info, bool owned_only);
 
-void do_work(local_id process_count);
+void do_work(local_id process_count, bool mutex);
 
 #endif
 

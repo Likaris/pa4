@@ -10,9 +10,16 @@
 //}
 
 int main(int argc, char *argv[]) {
+    bool mutexl = false;
+
     local_id process_count = atoi(argv[2]);
+
+    if (argc == 4) {
+        process_count = atoi(argv[3]);
+        mutexl = true;
+    }
     //balance_t *balances = get_balances(process_count, argv);
-    do_work(process_count + 1);
+    do_work(process_count + 1, mutexl);
     return 0;
 }
 

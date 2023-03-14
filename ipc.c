@@ -3,6 +3,7 @@
 #include <string.h>
 #include "main.h"
 #include "lamport.h"
+#include "critical_section.h"
 
 int send(void *self, local_id dst, const Message *msg) {
     Info *info = self;
@@ -102,6 +103,31 @@ int receive_multicast(void *self) {
     }
 
     return 0;
+}
+
+int sendToAllWorkers(Info *branchData, Message *message, Workers *workers) {
+    for (int i = 0; i < workers->length; ++i) {
+        if (workers->procId[i] != branchData->s_current_id) {
+            int result = send(branchData, workers->procId[i], message);
+            if (result == -1) {
+                printf("fail to send to all workers child: to %d from %d\n", workers->procId[i], branchData->s_current_id);
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
+int receiveFromAnyWorkers(Info *branchData, Message *message) {
+    for (int i = 0; i < getWorkers().length; ++i) {
+        if (getWorkers().procId[i] != branchData->s_current_id) {
+            int result = receive(branchData, getWorkers().procId[i], message);
+            if (result == 0) {
+                return 0;
+            }
+        }
+    }
+    return -1;
 }
 
 Message create_message(int16_t type, uint16_t payload_len, void* payload) {
