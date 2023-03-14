@@ -86,11 +86,7 @@ void wait_other_start(Info *info, FILE * events_file_ptr) {
         exit(1);
     }
 
-
-    Workers workers = getWorkers();
-    printf("%d: waiting for %d procs\n", id, workers.length);
-
-    receive_multicast(info, &workers, STARTED);
+    receive_multicast(info, STARTED);
 
     fprintf(events_file_ptr, log_received_all_started_fmt, get_lamport_time(), id);
     fflush(events_file_ptr);
@@ -137,11 +133,10 @@ void do_payload(Info *info, FILE * events_file_ptr) {
     }
 
     //Message doneMessages[info->s_process_count];
-    Workers workers = getWorkers();
     process_stop_msg(info, events_file_ptr);
     //syncReceiveDoneFromAllWorkers(info, doneMessages, &workers);
 
-    receive_multicast(info, &workers,DONE); //All DONE
+    receive_multicast(info, DONE); //All DONE
     printf("closing proc: %d", id);
 
 }
@@ -177,10 +172,8 @@ void parent_work(Info *info) {
     close_pipes(info, false);
 
     incrementLamportTime();
-    Workers workers = getWorkers();
-    printf("%d: waiting for %d procs\n", 0, workers.length);
 
-    receive_multicast(info, &workers, STARTED); //All STARTED
+    receive_multicast(info, STARTED); //All STARTED
 
     //bank_robbery(info, child_count);
 
@@ -190,7 +183,7 @@ void parent_work(Info *info) {
 //    }
 
     //workers = getWorkers();
-    receive_multicast(info, &workers, DONE); //All DONE
+    receive_multicast(info, DONE); //All DONE
 
     while (wait(NULL) > 0) {
     }

@@ -39,7 +39,6 @@ int receive(void *self, local_id from, Message *msg) {
     int read_fd = info->s_pipes[id][from]->s_mode_read;
     while (1) {
         long bytes_read = read(read_fd, &(msg->s_header), sizeof(MessageHeader));
-
         if (bytes_read > 0) {
             bytes_read = read(read_fd, &(msg->s_payload), msg->s_header.s_payload_len);
 
@@ -55,36 +54,11 @@ int receive(void *self, local_id from, Message *msg) {
     }
 }
 
-int receive_from_worker(void *self, local_id from, Message *msg) {
-    Info *info = (Info *) self;
-    local_id id = info->s_current_id;
-
-    int read_fd = info->s_pipes[id][from]->s_mode_read;
-    long bytes_read = read(read_fd, &(msg->s_header), sizeof(MessageHeader));
-
-    if (bytes_read > 0) {
-        bytes_read = read(read_fd, &(msg->s_payload), msg->s_header.s_payload_len);
-
-        if (info->logicTime < msg->s_header.s_local_time) {
-            setLamportTime(msg->s_header.s_local_time);
-        }
-        incrementLamportTime();
-
-        info->s_sender_id = from;
-
-        return bytes_read >= 0 ? 0 : -1;
-    }
-
-    return -1;
-}
-
-//Critical_section
 int receive_any(void *self, Message *msg) {
     Info *info = (Info *) self;
     local_id id = info->s_current_id;
 
     Workers workers = getWorkers();
-    //local_id process_count = info->s_process_count;
     while (1) {
         for (int i = 0; i < workers.length; i++) {
             local_id from = workers.procId[i];
@@ -93,10 +67,8 @@ int receive_any(void *self, Message *msg) {
             }
 
             int read_fd = info->s_pipes[id][from]->s_mode_read;
-
             {
                 long bytes_read = read(read_fd, &(msg->s_header), sizeof(MessageHeader));
-
                 if (bytes_read > 0) {
                     bytes_read = read(read_fd, &(msg->s_payload), msg->s_header.s_payload_len);
 
@@ -114,13 +86,11 @@ int receive_any(void *self, Message *msg) {
     }
 }
 
-//work_manager - wait until receive from all other subprocesses
 int receive_multicast(void *self, MessageType type) {
     Info *info = self;
     local_id id = info->s_current_id;
-    Workers workers = getWorkers();
 
-    //local_id process_count = info->s_process_count;
+    Workers workers = getWorkers();
     for (local_id i = 0; i < workers.length; i++) {
         local_id from = workers.procId[i];
         if (from == id) {
@@ -133,7 +103,7 @@ int receive_multicast(void *self, MessageType type) {
             return -1;
         } else if (message.s_header.s_type != type) {
             i--;
-            printf("%1d recieved msg from %1d with status %d\n", id, from, message.s_header.s_type);
+            //printf("%1d recieved msg from %1d with status %d\n", id, from, message.s_header.s_type);
         }
     }
 
