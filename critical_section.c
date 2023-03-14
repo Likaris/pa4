@@ -31,144 +31,67 @@ Workers getWorkers() {
     return _workers;
 }
 
+void check_status(Info *branchData, int ackNeeded) {
+    Message message;
+    local_id ackCounter = 0;
+
+    do {
+        receive_any(branchData, &message);
+        switch (message.s_header.s_type) {
+            case CS_REPLY: {
+                ackCounter++;
+                break;
+            }
+            case CS_REQUEST: {
+                Message replyMsg = create_message(CS_REPLY, 0, NULL);
+                send(branchData, branchData->s_sender_id, &replyMsg);
+                Request request = {message.s_header.s_local_time, branchData->s_sender_id};
+                enqueue(request);
+                break;
+            }
+            case CS_RELEASE: {
+                dequeue();
+                break;
+            }
+            case DONE: {
+                deleteWorker(branchData->s_sender_id);
+                ackCounter++;
+                break;
+            }
+            default:
+                printf("%s\n", "default");
+        }
+    } while (ackCounter < ackNeeded);
+}
+
 int request_cs(const void * self) {
     Info *branchData = (Info*)self;
 
-    //printf("proc %d tries to request\n", branchData->s_current_id);
-    //fflush(stdout);
+    Message requestCsMsg = create_message(CS_REQUEST, 0, NULL);
+    send_multicast(branchData, &requestCsMsg);
+    Request currentRequest = {requestCsMsg.s_header.s_local_time, branchData->s_current_id};
+    enqueue(currentRequest);
 
-    Request currentRequest = sendAndSaveCsRequest(branchData);
-
-    if (getWorkers().length > 1) {
-        Workers workers = getWorkers();
-        receiveAllRepliesHandler(branchData, currentRequest, workers);
-        //printf("proc %d received all approves\n", branchData->s_current_id);
-        //fflush(stdout);
+    int workersCount = getWorkers().length;
+    if (workersCount > 1) {
+        check_status(branchData, workersCount - 1); // wait ack
     }
 
-    while (checkEnterCondition(branchData, currentRequest) != 0) {
-        //printf("proc %d wait for approve\n", branchData->s_current_id);
-        syncReceiveCs(branchData);
+    while (compare(peek(), currentRequest) != 0) {
+        check_status(branchData, 0);
     }
     return 0;
 }
 
 int release_cs(const void * self) {
     Info *branchData = (Info*)self;
-    dequeue();
-    //printf("in proc %d request (%d, %d) was deleted\n", branchData->id, request.time, request.procId);
-    fflush(stdout);
 
     Message releaseMsg = create_message(CS_RELEASE, 0, NULL);
     send_multicast(branchData, &releaseMsg);
 
-    //printf("in proc %d send to delete (%d, %d)\n", branchData->id, request.time, request.procId);
-    fflush(stdout);
+    dequeue();
+
     return 0;
-}
-
-
-
-void syncReceiveCs(Info *branchData) {
-    Message requestFromOther;
-    while (true) {
-        if (receive_any(branchData, &requestFromOther) == 0) {
-            if (requestFromOther.s_header.s_type == CS_REQUEST) {
-                receiveCsRequestAndSendReply(branchData, requestFromOther);
-            } else if (requestFromOther.s_header.s_type == CS_RELEASE) {
-                receiveCsRelease(branchData, requestFromOther);
-            } else if (requestFromOther.s_header.s_type == DONE) {
-                deleteWorker(branchData->s_sender_id);
-                //printf("in proc %d delete worker %d\n", branchData->id, branchData->senderId);
-                fflush(stdout);
-            } else {
-                //printf("smth wrong\n");
-                fflush(stdout);
-            }
-            return;
-        }
-    }
-}
-
-Request sendAndSaveCsRequest(Info *branchData) {
-    Message requestCsMsg = create_message(CS_REQUEST, 0, NULL);
-    //printf("proc %d send request (%d, %d)\n", branchData->s_current_id, get_lamport_time(), branchData->s_current_id);
-    //fflush(stdout);
-    send_multicast(branchData, &requestCsMsg);
-
-    Request request = {requestCsMsg.s_header.s_local_time, branchData->s_current_id};
-    enqueue(request);
-    //printf("proc %d enqueue request (%d, %d)\n", branchData->s_current_id, request.time, request.procId);
-    //fflush(stdout);
-    return request;
-}
-
-
-
-void receiveAllRepliesHandler(Info *branchData, Request currentRequest, Workers workers) {
-    Message csReplies;
-    local_id ackCounter = 0;
-    int currentWorkersLength = getWorkers().length - 1;
-
-    while (ackCounter < currentWorkersLength) {
-        if (receive_any(branchData, &csReplies) == 0) {
-            if (csReplies.s_header.s_type == CS_REPLY) {
-                ackCounter++;
-            } else if (csReplies.s_header.s_type == CS_REQUEST) {
-                receiveCsRequestAndSendReply(branchData, csReplies);
-            } else if (csReplies.s_header.s_type == CS_RELEASE) {
-                receiveCsRelease(branchData, csReplies);
-            } else if (csReplies.s_header.s_type == DONE) {
-                deleteWorker(branchData->s_sender_id);
-                ackCounter++;
-            } else {
-                printf("smth wrong\n");
-            }
-        }
-    }
-}
-
-int checkEnterCondition(Info *branchData, Request currentRequest) {
-
-    Request firstRequest = peek();
-
-    if (compare(firstRequest, currentRequest) == 0) {
-        //printf("in proc %d approved the request (%d, %d)\n", branchData->id, currentRequest.time, currentRequest.procId);
-        fflush(stdout);
-        return 0;
-    } else {
-        //printf("in proc %d unapproved the request (%d, %d)\n", branchData->id, currentRequest.time, currentRequest.procId);
-        fflush(stdout);
-        return -1;
-    }
-}
-
-void receiveCsRequestAndSendReply(Info *branchData, Message requestFromOther) {
-    Request request = {requestFromOther.s_header.s_local_time, branchData->s_sender_id};
-    //printf("proc %d receive req (%d, %d) from proc %d\n",
-    //        branchData->id, request.time, request.procId,  branchData->senderId);
-    fflush(stdout);
-
-    enqueue(request);
-    //printf("proc %d enqueue request (%d, %d)\n", branchData->id, request.time, request.procId);
-    fflush(stdout);
-
-
-    Message replyMsg = create_message(CS_REPLY, 0, NULL);
-
-    //printf("proc %d send reply for (%d, %d) to proc %d\n", branchData->s_current_id, request.time, request.procId, branchData->s_sender_id);
-    send(branchData, branchData->s_sender_id, &replyMsg);
-    //fflush(stdout);
-}
-
-void receiveCsRelease(Info *branchData, Message release) {
-    //Request request = {release.s_header.s_local_time, branchData->senderId};
-
-    //printf("proc %d receive release msg from proc %d\n", branchData->id, branchData->senderId);
-    fflush(stdout);
-    dequeue(); // тут нужно удалить именно тот, который пришел, а не первый
-    //printf("proc %d delete request (%d, %d)\n", branchData->id, request.time, request.procId);
-    fflush(stdout);
 }
 
 Queue queue;

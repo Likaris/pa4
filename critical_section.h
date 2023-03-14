@@ -21,11 +21,9 @@ typedef struct {
     local_id procId;
 } Request;
 
-void syncReceiveCs(Info *branchData);
+void check_status(Info *branchData, int ackNeeded);
 Request sendAndSaveCsRequest(Info *branchData);
-void receiveAllRepliesHandler(Info *branchData, Request currentRequest, Workers workers);
 int checkEnterCondition(Info *branchData, Request currentRequest);
-void receiveCsRequestAndSendReply(Info *branchData, Message);
 void receiveCsRelease(Info *branchData, Message release);
 
 
