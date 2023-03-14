@@ -32,6 +32,7 @@ typedef struct {
 int receive_multicast(void * self);
 int sendToAllWorkers(Info *branchData, Message *message, Workers *workers);
 int receiveFromAnyWorkers(Info *branchData, Message *message);
+void syncReceiveDoneFromAllWorkers(void *self, Message message[], Workers *workers);
 
 Message create_message(int16_t type, uint16_t payload_len, void* payload);
 

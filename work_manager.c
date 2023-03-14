@@ -102,7 +102,7 @@ void process_stop_msg(Info *info, FILE * events_file_ptr) {
 }
 
 void process_done_msg(Info *info, FILE * events_file_ptr) {
-    local_id id = info->s_current_id;
+    //local_id id = info->s_current_id;
     //fprintf(events_file_ptr, log_received_all_done_fmt, history->s_history_len, id);
 
     Message msg = create_message(BALANCE_HISTORY, 0, NULL);
@@ -133,8 +133,12 @@ void do_payload(Info *info, FILE * events_file_ptr) {
         }
     }
 
+    Message doneMessages[info->s_process_count];
+    Workers workers = getWorkers();
     process_stop_msg(info, events_file_ptr);
-    receive_multicast(info); //All DONE
+    syncReceiveDoneFromAllWorkers(info, doneMessages, &workers);
+
+    //receive_multicast(info); //All DONE
 
 }
 
@@ -164,7 +168,7 @@ pid_t *fork_processes(local_id process_count, Info *info, FILE * events_file_ptr
 
 void parent_work(Info *info) {
     info->s_current_id = PARENT_ID;
-    local_id child_count = info->s_process_count - 1;
+    //local_id child_count = info->s_process_count - 1;
 
     close_pipes(info, false);
 

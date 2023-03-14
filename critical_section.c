@@ -40,18 +40,18 @@ void printWorkers() {
 }
 
 int request_cs(const void * self) {
-    Info *branchData = self;
+    Info *branchData = (Info*)self;
 
-    printf("proc %d tries to request\n", branchData->s_current_id);
-    fflush(stdout);
+    //printf("proc %d tries to request\n", branchData->s_current_id);
+    //fflush(stdout);
 
     Request currentRequest = sendAndSaveCsRequest(branchData);
 
     if (getWorkers().length > 1) {
         Workers workers = getWorkers();
         receiveAllRepliesHandler(branchData, currentRequest, workers);
-        printf("proc %d received all approves\n", branchData->s_current_id);
-        fflush(stdout);
+        //printf("proc %d received all approves\n", branchData->s_current_id);
+        //fflush(stdout);
     }
 
 
@@ -64,7 +64,7 @@ int request_cs(const void * self) {
 }
 
 int release_cs(const void * self) {
-    Info *branchData = self;
+    Info *branchData = (Info*)self;
     dequeue();
     //printf("in proc %d request (%d, %d) was deleted\n", branchData->id, request.time, request.procId);
     fflush(stdout);
@@ -123,8 +123,8 @@ Request sendAndSaveCsRequest(Info *branchData) {
     //buildCsMessage(&requestCsMsg, CS_REQUEST);
     Workers workers = getWorkers();
     //TODO
-    printf("proc %d send request (%d, %d)\n", branchData->s_current_id, get_lamport_time(), branchData->s_current_id);
-    fflush(stdout);
+    //printf("proc %d send request (%d, %d)\n", branchData->s_current_id, get_lamport_time(), branchData->s_current_id);
+    //fflush(stdout);
     sendToAllWorkers(branchData, &requestCsMsg, &workers);
 
 
@@ -137,8 +137,8 @@ Request sendAndSaveCsRequest(Info *branchData) {
 
     Request request = {get_lamport_time(), branchData->s_current_id};
     enqueue(request);
-    printf("proc %d enqueue request (%d, %d)\n", branchData->s_current_id, request.time, request.procId);
-    fflush(stdout);
+    //printf("proc %d enqueue request (%d, %d)\n", branchData->s_current_id, request.time, request.procId);
+    //fflush(stdout);
     return request;
 }
 
@@ -154,19 +154,19 @@ void receiveAllRepliesHandler(Info *branchData, Request currentRequest, Workers 
         if (receiveFromAnyWorkers(branchData, &csReplies) == 0) {
             if (csReplies.s_header.s_type == CS_REPLY) {
                 ackCounter++;
-                printf("proc %d RECEIVED from request %d: Reply; ack = %d\n", branchData->s_current_id, branchData->s_sender_id, ackCounter);
-                fflush(stdout);
+//                printf("proc %d RECEIVED from request %d: Reply; ack = %d\n", branchData->s_current_id, branchData->s_sender_id, ackCounter);
+//                fflush(stdout);
             } else if (csReplies.s_header.s_type == CS_REQUEST) {
-                printf("proc %d RECEIVED from request %d: Request\n", branchData->s_current_id, branchData->s_sender_id);
-                fflush(stdout);
+//                printf("proc %d RECEIVED from request %d: Request\n", branchData->s_current_id, branchData->s_sender_id);
+//                fflush(stdout);
                 receiveCsRequestAndSendReply(branchData, csReplies);
             } else if (csReplies.s_header.s_type == CS_RELEASE) {
-                printf("proc %d RECEIVED from request %d: Release\n", branchData->s_current_id, branchData->s_sender_id);
-                fflush(stdout);
+//                printf("proc %d RECEIVED from request %d: Release\n", branchData->s_current_id, branchData->s_sender_id);
+//                fflush(stdout);
                 receiveCsRelease(branchData, csReplies);
             } else if (csReplies.s_header.s_type == DONE) {
-                printf("proc %d RECEIVED from request %d: Done\n", branchData->s_current_id, branchData->s_sender_id);
-                fflush(stdout);
+//                printf("proc %d RECEIVED from request %d: Done\n", branchData->s_current_id, branchData->s_sender_id);
+//                fflush(stdout);
 
                 deleteWorker(branchData->s_sender_id);
                 ackCounter++;
@@ -208,9 +208,9 @@ void receiveCsRequestAndSendReply(Info *branchData, Message requestFromOther) {
 
 //    Message replyMsg;
 //    buildCsMessage(&replyMsg, CS_REPLY);
-    printf("proc %d send reply for (%d, %d) to proc %d\n", branchData->s_current_id, request.time, request.procId, branchData->s_sender_id);
+    //printf("proc %d send reply for (%d, %d) to proc %d\n", branchData->s_current_id, request.time, request.procId, branchData->s_sender_id);
     send(branchData, branchData->s_sender_id, &replyMsg);
-    fflush(stdout);
+    //fflush(stdout);
 }
 
 void receiveCsRelease(Info *branchData, Message release) {
