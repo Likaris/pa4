@@ -58,11 +58,10 @@ int receive_any(void *self, Message *msg) {
     Info *info = (Info *) self;
     local_id id = info->s_current_id;
 
-    Workers workers = getWorkers();
     while (1) {
-        for (int i = 0; i < workers.length; i++) {
-            local_id from = workers.procId[i];
-            if (from == id) {
+        for (int i = 1; i < info->s_process_count; i++) {
+            local_id from = i;
+            if (from == id || get_queue()[i-1] == -1) {
                 continue;
             }
 
@@ -90,10 +89,9 @@ int receive_multicast(void *self, MessageType type) {
     Info *info = self;
     local_id id = info->s_current_id;
 
-    Workers workers = getWorkers();
-    for (local_id i = 0; i < workers.length; i++) {
-        local_id from = workers.procId[i];
-        if (from == id) {
+    for (local_id i = 1; i < info->s_process_count; i++) {
+        local_id from = i;
+        if (from == id || get_queue()[i-1] == -1) {
             continue;
         }
 

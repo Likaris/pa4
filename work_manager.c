@@ -109,6 +109,8 @@ void process_done_msg(Info *info, FILE * events_file_ptr) {
 
 
 void do_payload(Info *info, FILE * events_file_ptr) {
+    //init_queue(info);
+
     int printCount = info->s_current_id * 5;
 
     for (int i = 0; i < printCount; ++i) {
@@ -180,7 +182,7 @@ void do_work(local_id process_count, bool mutex) {
     init_topology(info);
     open_pipes(info);
 
-    initWorkers(info->s_process_count);
+    init_queue(info);
     fork_processes(process_count, info, events_file_ptr);
     parent_work(info);
 

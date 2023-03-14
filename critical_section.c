@@ -6,40 +6,49 @@
 #include "critical_section.h"
 #include "lamport.h"
 
-Workers _workers;
+timestamp_t queue[32];
 
-void initWorkers(int workerCount) {
-    _workers.length = workerCount - 1;
-    for (int i = 0; i < _workers.length; ++i) {
-        _workers.procId[i] = i + 1;
+void init_queue(Info* info) {
+    for (size_t i = 0; i < info->s_process_count - 1; i++) {
+        queue[i] = INT16_MAX;
     }
 }
 
-void deleteWorker(local_id id) {
-    for (int i = 0; i <_workers.length; ++i) {
-        if (_workers.procId[i] == id) {
-            for (int j = i; j <_workers.length - 1; ++j) {
-                _workers.procId[j] = _workers.procId[j + 1];
-            }
-            break;
+void enqueue(Request request) {
+    queue[request.procId] = request.time;
+}
+
+int peek(Info* info) {
+    timestamp_t minimum = INT16_MAX;
+    int pos = 0;
+
+    for (int i = 0; i < info->s_process_count; i++) {
+        if (queue[i] > -1 && queue[i] < minimum) {
+            minimum = queue[i];
+            pos = i;
         }
     }
-    _workers.length--;
+
+    return pos;
 }
 
-Workers getWorkers() {
-    return _workers;
+void dequeue(Info* info) {
+    int pos = peek(info);
+    queue[pos] = INT16_MAX;
+}
+
+timestamp_t* get_queue() {
+    return queue;
 }
 
 void check_status(Info *branchData, int ackNeeded) {
     Message message;
-    local_id ackCounter = 0;
 
     do {
         receive_any(branchData, &message);
         switch (message.s_header.s_type) {
             case CS_REPLY: {
-                ackCounter++;
+                ackNeeded--;
                 break;
             }
             case CS_REQUEST: {
@@ -50,18 +59,19 @@ void check_status(Info *branchData, int ackNeeded) {
                 break;
             }
             case CS_RELEASE: {
-                dequeue();
+                dequeue(branchData);
                 break;
             }
             case DONE: {
-                deleteWorker(branchData->s_sender_id);
-                ackCounter++;
+                queue[branchData->s_sender_id - 1] = -1;
+                //deleteWorker(branchData->s_sender_id);
+                ackNeeded--;
                 break;
             }
             default:
                 printf("%s\n", "default");
         }
-    } while (ackCounter < ackNeeded);
+    } while (ackNeeded > 0);
 }
 
 int request_cs(const void * self) {
@@ -72,12 +82,18 @@ int request_cs(const void * self) {
     Request currentRequest = {requestCsMsg.s_header.s_local_time, branchData->s_current_id};
     enqueue(currentRequest);
 
-    int workersCount = getWorkers().length;
+    int workersCount = 0;
+    for (int i = 1; i < branchData->s_process_count; i++) {
+        if (queue[i-1] != -1) {
+            workersCount ++;
+        }
+    }
+
     if (workersCount > 1) {
         check_status(branchData, workersCount - 1); // wait ack
     }
 
-    while (compare(peek(), currentRequest) != 0) {
+    while (peek(branchData) != branchData->s_current_id) {
         check_status(branchData, 0);
     }
     return 0;
@@ -89,85 +105,8 @@ int release_cs(const void * self) {
     Message releaseMsg = create_message(CS_RELEASE, 0, NULL);
     send_multicast(branchData, &releaseMsg);
 
-    dequeue();
+    dequeue(branchData);
 
     return 0;
 }
 
-Queue queue;
-
-bool isFull() {
-    return queue.length == MAX_QUEUE_SIZE;
-}
-
-bool isEmpty() {
-    return queue.length == 0;
-}
-
-// если первый больше второго возвращает 1, если второй больше первого возвращает -1
-int compare(Request request1, Request request2) {
-    if (request1.time < request2.time) {
-        return 1;
-    }
-    if (request1.time == request2.time) {
-        if (request1.procId < request2.procId) {
-            return 1;
-        } else if (request1.procId == request2.procId) {
-            return 0;
-        }
-    }
-    return -1;
-}
-
-// находит id максимального элемента в очереди по компаратору
-int getMaxRequestId() {
-    if (queue.length <= 0) {
-        return -1;
-    } else {
-        int getMaxRequestId = 0;
-        for (int i = 1; i < queue.length; ++i) {
-            if (compare(queue.requests[i], queue.requests[getMaxRequestId]) > 0) { // если первый больше,
-                getMaxRequestId = i;
-            }
-        }
-        return getMaxRequestId;
-    }
-}
-
-bool enqueue(Request request) {
-    if (!isFull()) {
-        queue.requests[queue.length] = request;
-        queue.length++;
-        return true;
-    } else {
-        printf("attempt to enqueue to full queue\n");
-        return false;
-    }
-}
-
-// вытаскивает первый элемент из очереди
-Request dequeue() {
-    if (!isEmpty()) {
-        local_id maxRequestId = getMaxRequestId();
-        Request maxRequest = queue.requests[maxRequestId];
-        queue.requests[maxRequestId] = queue.requests[queue.length - 1];
-        queue.length--;
-        return maxRequest;
-    } else {
-        printf("attempt to dequeue from empty queue\n");
-        Request request = { -1, -1};
-        return request;
-    }
-}
-
-// возвраает первый элемент их очереди без его удаления из очереди
-Request peek() {
-    if (!isEmpty()) {
-        int maxRequestId = getMaxRequestId();
-        return queue.requests[maxRequestId];
-    } else {
-        printf("attempt to pick from empty queue\n");
-        Request request = { -1, -1};
-        return request;
-    }
-}

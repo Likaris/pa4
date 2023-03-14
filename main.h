@@ -14,7 +14,7 @@ typedef struct{
 } Pipes;
 
 typedef struct{
-	local_id s_process_count;
+	local_id s_process_count; //1 parent + p children
     timestamp_t logicTime;
     bool mutex;
 
@@ -24,13 +24,7 @@ typedef struct{
 	Pipes *s_pipes[MAX_PROCESS_COUNT][MAX_PROCESS_COUNT];
 } Info;
 
-typedef struct {
-    local_id procId[MAX_PROCESS_ID];
-    int length;
-} Workers;
-
 int receive_multicast(void * self, MessageType type);
-
 Message create_message(int16_t type, uint16_t payload_len, void* payload);
 
 #endif

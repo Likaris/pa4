@@ -10,12 +10,6 @@
 #include <stdbool.h>
 
 
-Workers getWorkers();
-
-void initWorkers(int);
-void deleteWorker(local_id id);
-
-
 typedef struct {
     timestamp_t time;
     local_id procId;
@@ -27,20 +21,21 @@ int checkEnterCondition(Info *branchData, Request currentRequest);
 void receiveCsRelease(Info *branchData, Message release);
 
 
-
+void init_queue(Info* info);
+timestamp_t* get_queue();
 #define MAX_QUEUE_SIZE 2048
 
-typedef struct {
-    Request requests[MAX_QUEUE_SIZE];
-    int length;
-} Queue;
-
-bool enqueue(Request request);
-
-Request dequeue();
-
-Request peek();
-
-int compare(Request, Request);
+//typedef struct {
+//    Request requests[MAX_QUEUE_SIZE];
+//    int length;
+//} Queue;
+//
+//bool enqueue(Request request);
+//
+//Request dequeue();
+//
+//Request peek();
+//
+//int compare(Request, Request);
 
 #endif //PA4_CRITICAL_SECTION_H
