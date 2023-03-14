@@ -83,9 +83,11 @@ int receive_any(void *self, Message *msg) {
     Info *info = (Info *) self;
     local_id id = info->s_current_id;
 
-    local_id process_count = info->s_process_count;
+    Workers workers = getWorkers();
+    //local_id process_count = info->s_process_count;
     while (1) {
-        for (int from = 0; from < process_count; from++) {
+        for (int i = 0; i < workers.length; i++) {
+            local_id from = workers.procId[i];
             if (from == id) {
                 continue;
             }
@@ -113,13 +115,14 @@ int receive_any(void *self, Message *msg) {
 }
 
 //work_manager - wait until receive from all other subprocesses
-int receive_multicast(void *self, Workers *workers, MessageType type) {
+int receive_multicast(void *self, MessageType type) {
     Info *info = self;
     local_id id = info->s_current_id;
+    Workers workers = getWorkers();
 
-    local_id process_count = info->s_process_count;
-    for (local_id i = 0; i < workers->length; i++) {
-        local_id from = workers->procId[i];
+    //local_id process_count = info->s_process_count;
+    for (local_id i = 0; i < workers.length; i++) {
+        local_id from = workers.procId[i];
         if (from == id) {
             continue;
         }
@@ -135,46 +138,6 @@ int receive_multicast(void *self, Workers *workers, MessageType type) {
     }
 
     return 0;
-}
-
-int sendToAllWorkers(Info *branchData, Message *message, Workers *workers) {
-    for (int i = 0; i < workers->length; ++i) {
-        if (workers->procId[i] != branchData->s_current_id) {
-            int result = send(branchData, workers->procId[i], message);
-            if (result == -1) {
-                printf("fail to send to all workers child: to %d from %d\n", workers->procId[i], branchData->s_current_id);
-                return -1;
-            }
-        }
-    }
-    return 0;
-}
-
-int receiveFromAnyWorkers(Info *branchData, Message *message) {
-    for (int i = 0; i < getWorkers().length; ++i) {
-        if (getWorkers().procId[i] != branchData->s_current_id) {
-            int result = receive_from_worker(branchData, getWorkers().procId[i], message);
-            if (result == 0) {
-                return 0;
-            }
-        }
-    }
-    return -1;
-}
-
-void syncReceiveDoneFromAllWorkers(void *self, Message message[], Workers *workers) {
-    Info *branchData = self;
-    for (int i = branchData->s_current_id+1; i < branchData->s_process_count; ++i) {
-        if (i != branchData->s_current_id) {
-            while (1) {
-                if (receive(branchData, i, &message[i]) == 0) {
-                    if (message[i].s_header.s_type == DONE) {
-                        break;
-                    }
-                }
-            }
-        }
-    }
 }
 
 Message create_message(int16_t type, uint16_t payload_len, void* payload) {

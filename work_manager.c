@@ -136,7 +136,7 @@ void do_payload(Info *info, FILE * events_file_ptr) {
         }
     }
 
-    Message doneMessages[info->s_process_count];
+    //Message doneMessages[info->s_process_count];
     Workers workers = getWorkers();
     process_stop_msg(info, events_file_ptr);
     //syncReceiveDoneFromAllWorkers(info, doneMessages, &workers);

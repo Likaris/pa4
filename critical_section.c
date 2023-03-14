@@ -73,7 +73,7 @@ int release_cs(const void * self) {
     Message releaseMsg = create_message(CS_RELEASE, 0, NULL);
     //Message releaseMsg;
     //buildCsMessage(&releaseMsg, CS_RELEASE);
-    Workers workers = getWorkers();
+    //Workers workers = getWorkers();
 
     //TODO
 //    for (int i = 0; i < workers.length; ++i) {
@@ -86,7 +86,9 @@ int release_cs(const void * self) {
 //        }
 //    }
 
-    sendToAllWorkers(branchData, &releaseMsg, &workers);
+    //sendToAllWorkers(branchData, &releaseMsg, &workers);
+    send_multicast(branchData, &releaseMsg);
+
     //printf("in proc %d send to delete (%d, %d)\n", branchData->id, request.time, request.procId);
     fflush(stdout);
     return 0;
@@ -97,7 +99,7 @@ int release_cs(const void * self) {
 void syncReceiveCs(Info *branchData) {
     Message requestFromOther;
     while (true) {
-        if (receiveFromAnyWorkers(branchData, &requestFromOther) == 0) {
+        if (receive_any(branchData, &requestFromOther) == 0) {
             if (requestFromOther.s_header.s_type == CS_REQUEST) {
                 receiveCsRequestAndSendReply(branchData, requestFromOther);
             } else if (requestFromOther.s_header.s_type == CS_RELEASE) {
@@ -121,11 +123,13 @@ Request sendAndSaveCsRequest(Info *branchData) {
     Message requestCsMsg = create_message(CS_REQUEST, 0, NULL);
     //Message requestCsMsg;
     //buildCsMessage(&requestCsMsg, CS_REQUEST);
-    Workers workers = getWorkers();
+    //Workers workers = getWorkers();
     //TODO
     //printf("proc %d send request (%d, %d)\n", branchData->s_current_id, get_lamport_time(), branchData->s_current_id);
     //fflush(stdout);
-    sendToAllWorkers(branchData, &requestCsMsg, &workers);
+    send_multicast(branchData, &requestCsMsg);
+
+    //sendToAllWorkers(branchData, &requestCsMsg, &workers);
 
 
 //    for (int i = 0; i < workers.length; ++i) {
@@ -151,7 +155,7 @@ void receiveAllRepliesHandler(Info *branchData, Request currentRequest, Workers 
 
 
     while (ackCounter < currentWorkersLength) {
-        if (receiveFromAnyWorkers(branchData, &csReplies) == 0) {
+        if (receive_any(branchData, &csReplies) == 0) {
             if (csReplies.s_header.s_type == CS_REPLY) {
                 ackCounter++;
 //                printf("proc %d RECEIVED from request %d: Reply; ack = %d\n", branchData->s_current_id, branchData->s_sender_id, ackCounter);
