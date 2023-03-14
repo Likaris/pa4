@@ -29,7 +29,7 @@ typedef struct {
     int length;
 } Workers;
 
-int receive_multicast(void * self);
+int receive_multicast(void * self, Workers *workers, MessageType type);
 int sendToAllWorkers(Info *branchData, Message *message, Workers *workers);
 int receiveFromAnyWorkers(Info *branchData, Message *message);
 void syncReceiveDoneFromAllWorkers(void *self, Message message[], Workers *workers);

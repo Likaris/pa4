@@ -97,7 +97,7 @@ int release_cs(const void * self) {
 void syncReceiveCs(Info *branchData) {
     Message requestFromOther;
     while (true) {
-        if (receive_any(branchData, &requestFromOther) == 0) {
+        if (receiveFromAnyWorkers(branchData, &requestFromOther) == 0) {
             if (requestFromOther.s_header.s_type == CS_REQUEST) {
                 receiveCsRequestAndSendReply(branchData, requestFromOther);
             } else if (requestFromOther.s_header.s_type == CS_RELEASE) {
