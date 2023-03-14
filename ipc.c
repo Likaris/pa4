@@ -111,6 +111,8 @@ int receive_multicast(void *self, MessageType type) {
 }
 
 Message create_message(int16_t type, uint16_t payload_len, void* payload) {
+    incrementLamportTime();
+
     MessageHeader header = {
             MESSAGE_MAGIC,
             payload_len,

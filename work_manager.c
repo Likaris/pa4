@@ -77,7 +77,6 @@ void close_pipes(Info *info, bool owned_only) {
 void wait_other_start(Info *info, FILE * events_file_ptr) {
     local_id id = info->s_current_id;
 
-    incrementLamportTime();
     Message msg = create_message(STARTED, 0, NULL);
     fprintf(events_file_ptr, log_started_fmt, msg.s_header.s_local_time, id, getpid(), getppid(), 0);
     fflush(events_file_ptr);
@@ -93,7 +92,6 @@ void wait_other_start(Info *info, FILE * events_file_ptr) {
 }
 
 void process_stop_msg(Info *info, FILE * events_file_ptr) {
-    incrementLamportTime();
     Message reply = create_message(DONE, 0, NULL);
     fprintf(events_file_ptr, log_done_fmt, reply.s_header.s_local_time, info->s_current_id, 0);
     fflush(events_file_ptr);
@@ -111,34 +109,23 @@ void process_done_msg(Info *info, FILE * events_file_ptr) {
 
 
 void do_payload(Info *info, FILE * events_file_ptr) {
+    int printCount = info->s_current_id * 5;
 
-    local_id id = info->s_current_id;
-    int loopCount = id * 5;
+    for (int i = 0; i < printCount; ++i) {
+        char buffer[64];
+        sprintf(buffer, log_loop_operation_fmt, info->s_current_id, i + 1, printCount);
 
-    if (info->mutex) {
-        for (int i = 1; i <= loopCount; ++i) {
-            char message[256];
-            sprintf(message, log_loop_operation_fmt, info->s_current_id, i, loopCount);
+        if (info->mutex) {
             request_cs(info);
-            print(message); //TODO: teacher print
-            //printf(message); //TODO: hide
+            print(buffer);
             release_cs(info);
-        }
-    } else {
-        for (int i = 1; i <= loopCount; ++i) {
-            char message[256];
-            sprintf(message, log_loop_operation_fmt, info->s_current_id, i, loopCount);
-            print(message); //TODO: teacher print
+        } else {
+            print(buffer);
         }
     }
 
-    //Message doneMessages[info->s_process_count];
     process_stop_msg(info, events_file_ptr);
-    //syncReceiveDoneFromAllWorkers(info, doneMessages, &workers);
-
     receive_multicast(info, DONE); //All DONE
-    printf("closing proc: %d", id);
-
 }
 
 void pipe_work(local_id id, Info *info, FILE * events_file_ptr) {
@@ -167,22 +154,11 @@ pid_t *fork_processes(local_id process_count, Info *info, FILE * events_file_ptr
 
 void parent_work(Info *info) {
     info->s_current_id = PARENT_ID;
-    //local_id child_count = info->s_process_count - 1;
 
     close_pipes(info, false);
 
-    incrementLamportTime();
-
     receive_multicast(info, STARTED); //All STARTED
 
-    //bank_robbery(info, child_count);
-
-//    Message msg = create_message(STOP, 0, NULL);
-//    if (send_multicast(info, &msg) != 0) {
-//        exit(1);
-//    }
-
-    //workers = getWorkers();
     receive_multicast(info, DONE); //All DONE
 
     while (wait(NULL) > 0) {
@@ -197,13 +173,14 @@ void do_work(local_id process_count, bool mutex) {
     info->s_process_count = process_count;
     info->logicTime = get_lamport_time();
     info->mutex = mutex; //TODO: input
-    initWorkers(info->s_process_count);
 
     FILE *events_file_ptr = fopen(events_log, "a");
     pipes_file_ptr = fopen(pipes_log, "a");
 
     init_topology(info);
     open_pipes(info);
+
+    initWorkers(info->s_process_count);
     fork_processes(process_count, info, events_file_ptr);
     parent_work(info);
 

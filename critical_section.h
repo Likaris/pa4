@@ -14,8 +14,6 @@ Workers getWorkers();
 
 void initWorkers(int);
 void deleteWorker(local_id id);
-void printWorkers();
-
 
 
 typedef struct {
